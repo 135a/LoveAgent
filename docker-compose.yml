@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: loveagent-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-loveagent_root}
+      MYSQL_DATABASE: loveagent
+      MYSQL_USER: loveagent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-loveagent123}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: loveagent-chromadb
+    restart: unless-stopped
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: loveagent-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    environment:
+      - DATABASE_URL=mysql+mysqlconnector://loveagent:${MYSQL_PASSWORD:-loveagent123}@mysql:3306/loveagent?charset=utf8mb4
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:?error}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
+      - JWT_SECRET=${JWT_SECRET:-loveagent-jwt-secret-key}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./knowledge:/app/knowledge
+      - ./data:/app/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: loveagent-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+
+volumes:
+  mysql_data:
+  chromadb_data:
