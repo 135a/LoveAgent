@@ -48,7 +48,7 @@ services:
       - DATABASE_URL=mysql+mysqlconnector://loveagent:${MYSQL_PASSWORD:-loveagent123}@mysql:3306/loveagent?charset=utf8mb4
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:?error}
+      - DEEPSEEK_API_KEY=sk-ceef8a351dd543e38db2c459b87939db
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
       - JWT_SECRET=${JWT_SECRET:-loveagent-jwt-secret-key}

@@ -40,11 +40,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../utils/axios'
 
 const router = useRouter()
+const route = useRoute()
 const step = ref(1)
 const selectedGender = ref('')
 const personalities = ref([])
@@ -74,7 +75,9 @@ async function selectPersonality(p) {
 }
 
 onMounted(async () => {
-  // If user already has a character, go to chat
+  // If user already has a character, go to chat (unless we are manually switching)
+  if (route.query.action === 'switch') return
+
   try {
     const char = await http.get('/api/characters/my')
     if (char) router.push('/chat')

@@ -50,6 +50,12 @@ def build_system_prompt(
 ) -> str:
     """根据模板和各维度数据，生成最终发给 LLM 的 System Prompt"""
     name = custom_name or template.name  # 优先使用用户自定义称呼，否则用默认名字
+    
+    # 格式化知识块，增加明确的边界和身份标识
+    formatted_memories = f"### 最近对话记忆 (注意区分 AI 和用户的身份):\n{memories}" if memories else "暂无记忆"
+    formatted_user_info = f"### 关于【当前用户】已知的信息 (这是对方的情况，不是你的):\n{user_knowledge}" if user_knowledge else "暂无用户信息"
+    formatted_char_info = f"### 关于【你自己({name})】的设定背景 (这是你的真实情况，请务必遵守):\n{character_knowledge}" if character_knowledge else "暂无你的设定"
+
     return template.system_prompt_template.format(
         name=name,  # 角色名字
         personality=template.personality,  # 性格变体
@@ -57,7 +63,7 @@ def build_system_prompt(
         speaking_style=template.speaking_style,  # 说话风格
         stage_name=stage_name,  # 当前关系阶段
         stage_description=stage_description,  # 阶段描述
-        memories=memories,  # 历史记忆
-        user_knowledge=user_knowledge,  # 用户知识
-        character_knowledge=character_knowledge,  # 角色知识
+        memories=formatted_memories,  # 格式化后的历史记忆
+        user_knowledge=formatted_user_info,  # 格式化后的用户知识
+        character_knowledge=formatted_char_info,  # 格式化后的角色知识
     )

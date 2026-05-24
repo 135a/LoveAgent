@@ -1,5 +1,21 @@
 <template>
   <div class="chat-container">
+    <!-- Header Controls -->
+    <div class="header-bar">
+      <div class="username">{{ auth.username }} 的伴侣</div>
+      <div class="actions">
+        <el-button text size="small" @click="goSwitch">
+          <el-icon><Refresh /></el-icon>
+          <span>切换恋人</span>
+        </el-button>
+        <el-divider direction="vertical" />
+        <el-button text size="small" @click="handleLogout">
+          <el-icon><SwitchButton /></el-icon>
+          <span>退出登录</span>
+        </el-button>
+      </div>
+    </div>
+
     <!-- Messages -->
     <div class="messages" ref="messagesRef">
       <div v-if="messages.length === 0" class="welcome">
@@ -42,6 +58,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { SwitchButton, Refresh } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useWebSocket } from '../composables/useWebSocket'
 import http from '../utils/axios'
@@ -53,6 +70,15 @@ const { connected, messages, relationship, connect, send, disconnect } = useWebS
 const inputText = ref('')
 const loading = ref(false)
 const messagesRef = ref(null)
+
+function goSwitch() {
+  router.push('/characters?action=switch')
+}
+
+function handleLogout() {
+  auth.logout()
+  router.push('/login')
+}
 
 function sendMessage() {
   const text = inputText.value.trim()
@@ -92,6 +118,23 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   background: #f5f5f5;
+}
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: white;
+  border-bottom: 1px solid #eee;
+}
+.header-bar .username {
+  font-size: 14px;
+  font-weight: bold;
+  color: #666;
+}
+.header-bar .actions {
+  display: flex;
+  align-items: center;
 }
 .messages {
   flex: 1;

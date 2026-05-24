@@ -2,11 +2,11 @@ from langgraph.graph import StateGraph, END
 
 from app.graph.state import RelationshipState
 from app.graph.nodes import (
-    input_gate,
-    memory_retrieval,
-    prompt_assembly,
-    llm_call,
-    post_processing,
+    input_gate,      # 输入门节点，用于处理用户输入
+    memory_retrieval, # 记忆检索节点，用于获取相关记忆信息
+    prompt_assembly, # 提示词组装节点，用于构建输入给LLM的提示
+    llm_call,        # LLM调用节点，用于执行大语言模型调用
+    post_processing, # 后处理节点，用于处理LLM的输出结果
 )
 
 

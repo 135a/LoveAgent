@@ -67,19 +67,30 @@ async function handleSubmit() {
     } else {
       await auth.register(form.username, form.password)
     }
-    ElMessage.success(isLogin.value ? '登录成功' : '注册成功')
 
     // Check if character exists
     const http = (await import('../utils/axios')).default
     const char = await http.get('/api/characters/my')
+    
+    ElMessage.success(isLogin.value ? '登录成功' : '注册成功')
+
     if (char) {
       router.push('/chat')
     } else {
       router.push('/characters')
     }
   } catch (err) {
+    // If it's a 401 on login, the detail will be "用户名或密码错误"
+    // The interceptor might have already shown a message, but Login.vue handles its own UI logic
     const detail = err.response?.data?.detail || '操作失败'
-    ElMessage.error(detail)
+    if (err.response?.status !== 401 || !isLogin.value) {
+       // Only show error if it's NOT a handled 401 during login, 
+       // or if it's registration which has different error patterns
+       ElMessage.error(detail)
+    } else if (detail !== '未授权' && detail !== 'token 无效或已过期') {
+       // Show specific login failure like "Wrong password"
+       ElMessage.error(detail)
+    }
   } finally {
     loading.value = false
   }

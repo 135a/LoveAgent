@@ -51,8 +51,9 @@ async def memory_retrieval(state: RelationshipState) -> dict:
     """Retrieve relevant memories and knowledge."""
     query = state.get("current_input", "")
     user_id = state.get("user_id", 0)
+    personality = state.get("personality", "文静")
 
-    context = await retrieve_context(user_id, query)
+    context = await retrieve_context(user_id, personality, query)
     return {
         "retrieved_memories": context["memories"],
         "user_knowledge": context["user_knowledge"],
@@ -111,9 +112,7 @@ async def llm_call(state: RelationshipState) -> dict:
 
     system_prompt = state.get("system_prompt", "")
     messages = state.get("messages", [])
-
-    print(f"\n[DEBUG] System Prompt:\n{system_prompt}\n")
-    print(f"[DEBUG] Personality from state: {state.get('personality')}")
+    current_input = state.get("current_input", "")
 
     # Convert messages to API format
     api_messages = []
@@ -122,10 +121,23 @@ async def llm_call(state: RelationshipState) -> dict:
         if isinstance(msg, dict) and "role" in msg and "content" in msg:
             api_messages.append({"role": msg["role"], "content": msg["content"]})
 
-    # Add current input if not already in history (though it usually is)
-    current_input = state.get("current_input", "")
-    if not api_messages or api_messages[-1]["content"] != current_input:
-        api_messages.append({"role": "user", "content": current_input})
+    # Add current input
+    if current_input == "[SYSTEM_PROACTIVE_TRIGGER]":
+        # Don't add the trigger string to context, instead add a guiding system message
+        api_messages.append({
+            "role": "system", 
+            "content": "[系统提示] 用户已经有一段时间没有回复你了。请结合上面的聊天语境，主动说点什么来继续话题，或者关心一下对方。保持你的角色设定，严禁混淆你和对方的身份背景。"
+        })
+    else:
+        # Normal user input
+        if not api_messages or api_messages[-1]["content"] != current_input:
+            api_messages.append({"role": "user", "content": current_input})
+
+    # Final identity reinforcement
+    api_messages.append({
+        "role": "system",
+        "content": f"【身份核验】请始终牢记：你是 {state.get('personality', '文静')} 型人格，你所有的背景设定都写在上面的‘关于【你自己】的设定背景’中。绝对不要把对方（用户）提到的个人情况或背景错认为是你自己的。保持主客体清晰。"
+    })
 
     response = await chat_completion(system_prompt, api_messages)
     return {"response": response}
@@ -134,16 +146,21 @@ async def llm_call(state: RelationshipState) -> dict:
 async def post_processing(state: RelationshipState) -> dict:
     """Save memories and update state after LLM response."""
     user_id = state.get("user_id", 0)
+    personality = state.get("personality", "文静")
     user_msg = state.get("current_input", "")
     ai_response = state.get("response", "")
 
+    # Don't save proactive triggers as memories
+    if user_msg == "[SYSTEM_PROACTIVE_TRIGGER]":
+        return {}
+
     # Store important user information as memory
-    important_topics = ["喜欢", "最爱", "讨厌", "害怕", "梦想", "生日", "名字"]
+    important_topics = ["喜欢", "最爱", "讨厌", "害怕", "梦想", "生日", "名字", "家乡", "哪里人", "安徽", "江苏", "学校", "专业"]
     if any(kw in user_msg for kw in important_topics):
-        add_memory(user_id, user_msg, {"type": "user_info", "emotion": state.get("user_emotion", "")})
+        add_memory(user_id, personality, f"用户提到过: {user_msg}", {"type": "user_info", "emotion": state.get("user_emotion", "")})
 
     # Store AI response as memory for future reference
     if ai_response and len(ai_response) > 20:
-        add_memory(user_id, f"AI: {ai_response[:200]}", {"type": "conversation", "role": "ai"})
+        add_memory(user_id, personality, f"AI: {ai_response[:200]}", {"type": "conversation", "role": "ai"})
 
     return {}
